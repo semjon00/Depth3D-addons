@@ -16,14 +16,12 @@ or overly detailed, whereas the phone does not support such a high resolution.
 
 
 **What do shaders in this repository do?**<br/>
-DownscaleWithBorders shader allows you to change the size of the rendered image,
+The only shader so far is Depth3DAddon.
+It allows you to change the size of the rendered image,
 so it would fit into FOV of your Google Cardboard. Pro tip: if you play in
 full-screen, you can lower the resolution. If you do this carefully,
-the picture quality will not suffer.
-SplitApart shader allows you to, well, split apart images for two lenses of the glasses.
-This is absolutely necessary if you use the first shader, because otherwise
-you will not be able to focus your eyes on the image, which is painful and
-completely destroys 3D effect.
+the picture quality will not suffer. This shader also allows you to,
+split apart images for two lenses of the glasses.
 
 
 **How can I install the shaders?**<br/>
