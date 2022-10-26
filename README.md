@@ -7,26 +7,31 @@ in VR glasses, even if the game does not originally support VR!
 
 **Why add anything extra?**<br/>
 Depth3D shaders are great and work just fine with may VR glasses.
-However, there are some complications if you use Google Cardboard,
-especially if you stream the picture directly to the phone
-of the Google Cardboard setup
-(for example, with the means of Moonlight). The picture may be distorted over
-some ax, too large to fit into the field of view of the VR glasses,
-or overly detailed, whereas the phone does not support such a high resolution.
+However, there are some complications that arise
+if you use SuperDepth3D with a simple VR set,
+for example a Google Cardboard. Now, the setup that I found most comfortable
+involved streaming the game picture directly to the phone, that is installed
+into the VR set (for example, with the means of Moonlight).
+However, the result is lacking - the picture may end up too large and/or distorted.
 
 
 **What do shaders in this repository do?**<br/>
 The only shader so far is Depth3DAddon.
-It allows you to change the size of the rendered image,
-so it would fit into FOV of your Google Cardboard. Pro tip: if you play in
-full-screen, you can lower the resolution. If you do this carefully,
-the picture quality will not suffer. This shader also allows you to,
-split apart images for two lenses of the glasses.
+It allows you to change the size of the rendered image
+and move the images for two lenses apart.
+Using these features, you can fit
+the images into the field of view of your VR set.
+Aside from that, the shader allows you to correct
+geometric distortion and chromatic aberration.
+In simple terms, this means that you may achieve a
+better, more realistic image.
 
 
 **How can I install the shaders?**<br/>
-First, install ReShade. Do not forget to install Depth3D shaders.
-Then, open the reshade-shaders folder, that was created in the folder where
-your game is located. Now, copy the files from this repository to the
+First, install ReShade. Do not forget to install Depth3D shaders with it.
+Then, open the reshade-shaders folder. It is positioned inside the folder where
+your game is located. After that, copy the files from this repository to the
 reshade-shaders folder (it is sufficient to copy the Shaders folder only).
-After that, open the game, press the Home key, and configure the shaders as you like.
+After that, open the game, press the Home key and configure the shaders as you like.
+
+Happy gaming!
