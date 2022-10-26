@@ -1,4 +1,4 @@
-// Version 2.2
+// Version 3.0
 
 #include "ReShade.fxh"
 
@@ -12,6 +12,7 @@ uniform float fResolutionX <
 	ui_min = 0.05;
 	ui_max = 1.0;
 	ui_step = 0.0001;
+	ui_category = "Basic";
 > = 1.0; // BUFFER_WIDTH
 
 uniform float fResolutionY <
@@ -20,60 +21,67 @@ uniform float fResolutionY <
 	ui_min = 0.05;
 	ui_max = 1.0;
 	ui_step = 0.0001;
+	ui_category = "Basic";
 > = 1.0; // BUFFER_HEIGHT
 
 uniform float fSplitCoff <
-    ui_label = "Split Apart Distance";
-    ui_tooltip = "How far to move the halfs of the image from eachother.";
-    ui_type = "slider";
-    ui_min = -0.5;
-    ui_max = +0.5;
-    ui_step = 0.0001;
+	ui_label = "Split Apart Distance";
+	ui_tooltip = "How far to move the halfs of the image from each other.";
+	ui_type = "slider";
+	ui_min = -0.3;
+	ui_max = +0.3;
+	ui_step = 0.0001;
+	ui_category = "Basic";
 > = 0.0;
 
 uniform float fElevation <
-    ui_label = "Elevation";
-    ui_tooltip = "Move the images up or down.";
-    ui_type = "slider";
-    ui_min = -0.25;
-    ui_max = +0.25;
-    ui_step = 0.0001;
+	ui_label = "Elevation";
+	ui_tooltip = "Move the images up or down.";
+	ui_type = "slider";
+	ui_min = -0.25;
+	ui_max = +0.25;
+	ui_step = 0.0001;
+	ui_category = "Basic";
 > = 0.0;
 
 uniform float fLensCenterOffset <
-    ui_label = "Lens Center Offset";
-    ui_tooltip = "Adjust the center of the lens image.";
-    ui_type = "slider";
-    ui_min = -0.1;
-    ui_max = +0.1;
-    ui_step = 0.0001;
+	ui_label = "Lens Center Offset";
+	ui_tooltip = "Adjust the center of the lens to get better\neffect from advanced image corrections.";
+	ui_type = "slider";
+	ui_min = -0.1;
+	ui_max = +0.1;
+	ui_step = 0.0001;
+	ui_category = "Advanced";
 > = 0.0;
 
 uniform float fFishEyeCoffA <
-    ui_label = "Fish Eye Coefficient A";
-    ui_tooltip = "How much fish eye to apply.";
-    ui_type = "slider";
-    ui_min = 0.0;
-    ui_max = 2.0;
-    ui_step = 0.0001;
+	ui_label = "Fish Eye A";
+	ui_tooltip = "Correct for geometric distortion.";
+	ui_type = "slider";
+	ui_min = 0.0;
+	ui_max = 1.0;
+	ui_step = 0.0001;
+	ui_category = "Advanced";
 > = 0.0;
 
 uniform float fFishEyeCoffB <
-    ui_label = "Fish Eye Coefficient B";
-    ui_tooltip = "How much fish eye to apply.";
-    ui_type = "slider";
-    ui_min = 0.0;
-    ui_max = 10.0;
-    ui_step = 0.0001;
+	ui_label = "Fish Eye B";
+	ui_tooltip = "Correct for geometric distortion.";
+	ui_type = "slider";
+	ui_min = 0.0;
+	ui_max = 5.0;
+	ui_step = 0.0001;
+	ui_category = "Advanced";
 > = 0.0;
 
-uniform float fFishEyeCoffC <
-    ui_label = "Fish Eye Coefficient C";
-    ui_tooltip = "A value for Fish Eye.";
-    ui_type = "slider";
-    ui_min = 0.0;
-    ui_max = 0.9;
-    ui_step = 0.0001;
+uniform float fChromaticAberrationCoff <
+	ui_label = "Red-Blue correction";
+	ui_tooltip = "Correct for chromatic aberration.";
+	ui_type = "slider";
+	ui_min = -0.100;
+	ui_max = +0.100;
+	ui_step = 0.001;
+	ui_category = "Advanced";
 > = 0.0;
 
 texture BackBufferTex : COLOR;
@@ -87,68 +95,77 @@ sampler BackBufferDownSample {
 
 #define NONE_POSITION float2(-100.0, -100.0)
 
-float2 PosReverseDownscale(float2 texcoord) {
-	// ReShade::PixelSize
-	float2 scale = float2(fResolutionX, fResolutionY);
-	float2 pivot = float2(0.5, 0.5);
-	return (texcoord - pivot) / scale + pivot;
-}
-
-float2 PosReverseElevation(float2 texcoord) {
-	return texcoord - float2(0.0, fElevation);
-}
-
-float2 PosReverseRoundify(float2 texcord) {
+// Receives the target position.
+// Seeks corresponding position to sample from, for a given channel
+float2 PosReverseModify(float2 texcoord, int channel) {
+	{ // Reverse elevation
+		texcoord = texcoord - float2(0.0, fElevation);
+	}
+	
 	float eyeCenterDelta = (0.25 + fLensCenterOffset) * fResolutionX + fSplitCoff;
-	int eye = texcord.x >= 0.5 ? +1 : -1;
+	int eye = texcoord.x >= 0.5 ? +1 : -1;
 	float2 eyeCenter = float2(0.5 + eye * eyeCenterDelta, 0.5);
-	float2 diff = (texcord - eyeCenter);
+	float2 diff = (texcoord - eyeCenter);
 	
-	float2 mappingCoff = float2(4.0 / fResolutionX, 2.0 / fResolutionY);
-	float2 mapped = diff * mappingCoff;
-	float distortionCurveParam = max(0.0, length(mapped) - fFishEyeCoffC) / (1 - fFishEyeCoffC);
-
-	float fFishEyeCoffAPrime = pow(fFishEyeCoffA, 2.71828182846);
-	float fFishEyeCoffBPrime = pow(fFishEyeCoffB, 2);
-	float2 distortionCoff = 1 + fFishEyeCoffAPrime * pow(distortionCurveParam, fFishEyeCoffBPrime);
-	float2 result = eyeCenter + distortionCoff * diff;
+	{ // Reverse chromatic abberation
+		diff *= 1.0 + (float(channel) - 1.0) * (fChromaticAberrationCoff * 0.25);
+	}
 	
-	int eyeResult = result.x >= 0.5 ? +1 : -1;
-	if (eyeResult == eye) {
-		return result;
-	} else {
-		return NONE_POSITION;
+	{ // Reverse "fisheye"
+		float2 mappingCoff = float2(4.0 / fResolutionX, 2.0 / fResolutionY);
+		float2 mapped = diff * mappingCoff;
+		float distortionCurveParam = length(mapped);
+		float fFishEyeCoffAPrime = pow(max(0.0, fFishEyeCoffA), 2.71828182846);
+		float fFishEyeCoffBPrime = pow(fFishEyeCoffB, 2);
+		float2 distortionCoff = 1 + fFishEyeCoffAPrime * pow(distortionCurveParam, fFishEyeCoffBPrime);
+		texcoord = eyeCenter + distortionCoff * diff;
+		
+		int eyeResult = texcoord.x >= 0.5 ? +1 : -1;
+		if (eyeResult != eye) {
+			return NONE_POSITION;
+		}
 	}
-}
-
-float2 PosReverseSplitApart(float2 texcoord) {
-	float coordX = texcoord.x;
-	if (coordX >= 0.5 && coordX - fSplitCoff >= 0.5) {
-		return texcoord - float2(fSplitCoff, 0.0);
-	} else if (coordX < 0.5 && coordX + fSplitCoff < 0.5) {
-		return texcoord + float2(fSplitCoff, 0.0);
-	} else {
-		return NONE_POSITION;
+	
+	{ // Reverse downscale
+		float2 scale = float2(fResolutionX, fResolutionY);
+		float2 pivot = float2(0.5, 0.5);
+		texcoord = (texcoord - pivot) / scale + pivot;
 	}
+	
+	{ // Reverse split apart
+		float coordX = texcoord.x;
+		if (coordX >= 0.5 && coordX - fSplitCoff >= 0.5) {
+			texcoord = texcoord - float2(fSplitCoff, 0.0);
+		} else if (coordX < 0.5 && coordX + fSplitCoff < 0.5) {
+			texcoord = texcoord + float2(fSplitCoff, 0.0);
+		} else {
+			return NONE_POSITION;
+		}
+	}
+	
+	return texcoord;
 }
 
 float4 PosToColor(float2 texcoord) {
 	return tex2D(BackBufferDownSample, texcoord);
 }
 
-float4 ChainPS(float4 vpos : SV_Position, float2 texcoord : TEXCOORD) : SV_Target {
-	texcoord = PosReverseElevation(texcoord);
-	texcoord = PosReverseRoundify(texcoord);
-	texcoord = PosReverseDownscale(texcoord);
-	texcoord = PosReverseSplitApart(texcoord);
-
-	return PosToColor(texcoord);
+float4 MappingPS(float4 vpos : SV_Position, float2 texcoord : TEXCOORD) : SV_Target {
+	texcoord = PosReverseModify(texcoord, 0);
+	
+	float4 ans = PosToColor(PosReverseModify(texcoord, 1));
+	if (abs(fChromaticAberrationCoff) > 0.001) {
+		ans.x = PosToColor(PosReverseModify(texcoord, 0)).x;
+		ans.z = PosToColor(PosReverseModify(texcoord, 2)).z;
+	}
+	
+	return ans;
 }
 
 technique Depth3DAddon < ui_tooltip = "A tool for modifying Depth3D output."; >
 {
-    pass {
-        VertexShader = PostProcessVS;
-        PixelShader = ChainPS;
-    }
+	pass {
+		VertexShader = PostProcessVS;
+		PixelShader = MappingPS;
+	}
 }
