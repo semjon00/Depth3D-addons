@@ -84,6 +84,11 @@ uniform float fChromaticAberrationCoff <
 	ui_category = "Advanced";
 > = 0.0;
 
+uniform bool bTestingImage <
+	ui_label = "Testing image";
+	ui_tooltip = "Use this to test how well\nthe parameters map to the glasses";
+> = false;
+
 texture BackBufferTex : COLOR;
 sampler BackBufferDownSample {
 	Texture = BackBufferTex;
@@ -146,8 +151,32 @@ float2 PosReverseModify(float2 texcoord, int channel) {
 	return texcoord;
 }
 
+float4 TestingImage(float2 texcoord) {
+		int eye = texcoord.x >= 0.5 ? +1 : -1;
+		float2 pos = texcoord * float2(4.0, 2.0) - float2(2.0 + eye, 1);
+		uint2 grid = uint2(uint(0.5 + abs(100 * pos.x)),uint(0.5 + abs(100 * pos.y)));
+		
+		bool isWhite = true;
+		if (grid.x + grid.y % 9 == 0) isWhite = true;
+		
+		if (grid.x % 9 != 0) isWhite = false;
+		if (grid.y % 9 != 0) isWhite = false;
+		
+		if ((grid.x == 81 || grid.y == 81) && (grid.x < 82 && grid.y < 82)) isWhite = true;
+		if ((grid.x == 90 || grid.y == 90) && (grid.x < 91 && grid.y < 91)) isWhite = true;
+		
+		if (texcoord.x < 0.01 || 0.99 < texcoord.x) isWhite = false;
+		if (texcoord.y < 0.01 || 0.99 < texcoord.y) isWhite = false;
+		
+		return isWhite ? float4(1.0,1.0,1.0,0.0) : float4(0.0,0.0,0.0,0.0);
+}
+
 float4 PosToColor(float2 texcoord) {
-	return tex2D(BackBufferDownSample, texcoord);
+	if (!bTestingImage) {
+		return tex2D(BackBufferDownSample, texcoord);
+	} else {
+		return TestingImage(texcoord);
+	}
 }
 
 float4 MappingPS(float4 vpos : SV_Position, float2 texcoord : TEXCOORD) : SV_Target {
@@ -162,7 +191,7 @@ float4 MappingPS(float4 vpos : SV_Position, float2 texcoord : TEXCOORD) : SV_Tar
 	return ans;
 }
 
-technique Depth3DAddon < ui_tooltip = "A tool for modifying Depth3D output."; >
+technique Depth3DAddon < ui_tooltip = "A tool for modifying Depth3D output.\nMake sure to put in directly after SuperDepth3D shader."; >
 {
 	pass {
 		VertexShader = PostProcessVS;

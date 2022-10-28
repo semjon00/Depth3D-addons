@@ -23,7 +23,7 @@ Using these features, you can fit
 the images into the field of view of your VR set.
 Aside from that, the shader allows you to correct
 geometric distortion and chromatic aberration.
-In simple terms, this means that you may achieve a
+In simple terms, this means that you can achieve a
 better, more realistic image.
 
 
