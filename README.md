@@ -5,13 +5,21 @@ In simple terms, these shaders allow you to play a lot of 3D games
 in VR glasses, even if the game does not originally support VR!
 
 
+**What are the Depth3D alternatives?**<br/>
+One alternative is [Geo3D](https://github.com/BlueSkyDefender/Depth3D).
+It provides significantly more accurate and convincing 3D, but it also significantly degrades performance and has some glitches.
+Another alternative is [geo-11](https://www.mtbs3d.com/phpbb/viewtopic.php?t=26264). The 3D effect provided is similar to the one of Geo3D, but geo-11 has better performance.
+The drawback is that it only supports DirectX 11 games and that has a different set of glitches.
+This project works well with both of these alternatives.
+
+
 **Why add anything extra?**<br/>
 Depth3D shaders are great and work just fine with may VR glasses.
 However, there are some complications that arise
 if you use SuperDepth3D with a simple VR set,
 for example a Google Cardboard. Now, the setup that I found most comfortable
 involved streaming the game picture directly to the phone, that is installed
-into the VR set (for example, with the means of Moonlight).
+into the VR set (for example, with the means of [Sunshine](https://github.com/LizardByte/Sunshine) and [Moonlight](https://github.com/moonlight-stream/moonlight-android)).
 However, the result is lacking - the picture may end up too large and/or distorted.
 
 
