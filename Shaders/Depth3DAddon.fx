@@ -1,6 +1,4 @@
-// Version 3.0
-
-#include "ReShade.fxh"
+// Version 4.0
 
 #ifndef VIRTUAL_RESOLUTION_DOWNFILTER
 #define VIRTUAL_RESOLUTION_DOWNFILTER LINEAR
@@ -28,8 +26,8 @@ uniform float fSplitCoff <
 	ui_label = "Split Apart Distance";
 	ui_tooltip = "How far to move the halfs of the image from each other.";
 	ui_type = "slider";
-	ui_min = -0.3;
-	ui_max = +0.3;
+	ui_min = -0.1;
+	ui_max = +0.1;
 	ui_step = 0.0001;
 	ui_category = "Basic";
 > = 0.0;
@@ -44,44 +42,44 @@ uniform float fElevation <
 	ui_category = "Basic";
 > = 0.0;
 
-uniform float fLensCenterOffset <
-	ui_label = "Lens Center Offset";
-	ui_tooltip = "Adjust the center of the lens to get better\neffect from advanced image corrections.";
-	ui_type = "slider";
-	ui_min = -0.1;
-	ui_max = +0.1;
-	ui_step = 0.0001;
-	ui_category = "Advanced";
-> = 0.0;
-
-uniform float fFishEyeCoffA <
-	ui_label = "Fish Eye A";
-	ui_tooltip = "Correct for geometric distortion.";
+uniform float fGeoDistrK1 <
+	ui_label = "First coefficient";
+	ui_tooltip = "Radial distortion coefficient k1.";
 	ui_type = "slider";
 	ui_min = 0.0;
 	ui_max = 1.0;
 	ui_step = 0.0001;
-	ui_category = "Advanced";
+	ui_category = "Geometric distortions";
 > = 0.0;
 
-uniform float fFishEyeCoffB <
-	ui_label = "Fish Eye B";
-	ui_tooltip = "Correct for geometric distortion.";
+uniform float fGeoDistrK2 <
+	ui_label = "Second coefficient";
+	ui_tooltip = "Radial distortion coefficient k2.";
 	ui_type = "slider";
 	ui_min = 0.0;
-	ui_max = 5.0;
+	ui_max = 1.0;
 	ui_step = 0.0001;
-	ui_category = "Advanced";
+	ui_category = "Geometric distortions";
+> = 0.0;
+
+uniform float fGeoDistrK3 <
+	ui_label = "Third coefficient";
+	ui_tooltip = "Radial distortion coefficient k3.";
+	ui_type = "slider";
+	ui_min = 0.0;
+	ui_max = 1.0;
+	ui_step = 0.0001;
+	ui_category = "Geometric distortions";
 > = 0.0;
 
 uniform float fChromaticAberrationCoff <
 	ui_label = "Red-Blue correction";
 	ui_tooltip = "Correct for chromatic aberration.";
 	ui_type = "slider";
-	ui_min = -0.100;
-	ui_max = +0.100;
+	ui_min = 0.0;
+	ui_max = +0.020;
 	ui_step = 0.001;
-	ui_category = "Advanced";
+	ui_category = "Color distortions";
 > = 0.0;
 
 uniform bool bTestingImage <
@@ -107,22 +105,21 @@ float2 PosReverseModify(float2 texcoord, int channel) {
 		texcoord = texcoord - float2(0.0, fElevation);
 	}
 	
-	float eyeCenterDelta = (0.25 + fLensCenterOffset) * fResolutionX + fSplitCoff;
+	float eyeCenterDelta = 0.25 * fResolutionX + fSplitCoff;
 	int eye = texcoord.x >= 0.5 ? +1 : -1;
 	float2 eyeCenter = float2(0.5 + eye * eyeCenterDelta, 0.5);
 	float2 diff = (texcoord - eyeCenter);
 	
 	{ // Reverse chromatic abberation
-		diff *= 1.0 + (float(channel) - 1.0) * (fChromaticAberrationCoff * 0.25);
+		diff *= 1.0 + (float(channel) - 1.0) * fChromaticAberrationCoff;
 	}
 	
 	{ // Reverse "fisheye"
 		float2 mappingCoff = float2(4.0 / fResolutionX, 2.0 / fResolutionY);
 		float2 mapped = diff * mappingCoff;
-		float distortionCurveParam = length(mapped);
-		float fFishEyeCoffAPrime = pow(max(0.0, fFishEyeCoffA), 2.71828182846);
-		float fFishEyeCoffBPrime = pow(fFishEyeCoffB, 2);
-		float2 distortionCoff = 1 + fFishEyeCoffAPrime * pow(distortionCurveParam, fFishEyeCoffBPrime);
+		float r = length(mapped);
+		
+		float2 distortionCoff = 1.0 + fGeoDistrK1 * pow(r, 2) + fGeoDistrK2 * pow(r, 4) + fGeoDistrK3 * pow(r, 6);
 		texcoord = eyeCenter + distortionCoff * diff;
 		
 		int eyeResult = texcoord.x >= 0.5 ? +1 : -1;
@@ -154,19 +151,15 @@ float2 PosReverseModify(float2 texcoord, int channel) {
 float4 TestingImage(float2 texcoord) {
 		int eye = texcoord.x >= 0.5 ? +1 : -1;
 		float2 pos = texcoord * float2(4.0, 2.0) - float2(2.0 + eye, 1);
-		uint2 grid = uint2(uint(0.5 + abs(100 * pos.x)),uint(0.5 + abs(100 * pos.y)));
+		uint2 grid = uint2(uint(0.5 + abs(100 * pos.x)), uint(0.5 + abs(100 * pos.y)));
 		
-		bool isWhite = true;
-		if (grid.x + grid.y % 9 == 0) isWhite = true;
+		bool isWhite = false;
 		
-		if (grid.x % 9 != 0) isWhite = false;
-		if (grid.y % 9 != 0) isWhite = false;
+		if (grid.x % 9 == 0 && grid.y % 9 == 0) isWhite = true;
 		
 		if ((grid.x == 81 || grid.y == 81) && (grid.x < 82 && grid.y < 82)) isWhite = true;
-		if ((grid.x == 90 || grid.y == 90) && (grid.x < 91 && grid.y < 91)) isWhite = true;
-		
-		if (texcoord.x < 0.01 || 0.99 < texcoord.x) isWhite = false;
-		if (texcoord.y < 0.01 || 0.99 < texcoord.y) isWhite = false;
+		if (grid.x == 90 || grid.y == 90) isWhite = true;
+		if (grid.x > 90 || grid.y > 90) isWhite = false;
 		
 		return isWhite ? float4(1.0,1.0,1.0,0.0) : float4(0.0,0.0,0.0,0.0);
 }
@@ -191,7 +184,14 @@ float4 MappingPS(float4 vpos : SV_Position, float2 texcoord : TEXCOORD) : SV_Tar
 	return ans;
 }
 
-technique Depth3DAddon < ui_tooltip = "A tool for modifying Depth3D output.\nMake sure to put in directly after SuperDepth3D shader."; >
+void PostProcessVS(in uint id : SV_VertexID, out float4 position : SV_Position, out float2 texcoord : TEXCOORD)
+{
+	texcoord.x = (id == 2) ? 2.0 : 0.0;
+	texcoord.y = (id == 1) ? 2.0 : 0.0;
+	position = float4(texcoord * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.0, 1.0);
+}
+
+technique Depth3DAddon < ui_tooltip = "A tool for modifying Depth3D output.\nMake sure to put in directly after SuperDepth3D or To_Else shader."; >
 {
 	pass {
 		VertexShader = PostProcessVS;
